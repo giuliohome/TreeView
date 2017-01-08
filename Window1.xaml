@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Window
+	x:Class="TreeVisitor.Window1" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="TreeVisitor"
+	Height="300"
+	Width="300">
+	<Grid>
+		<TreeView
+			ItemsSource="{Binding TreeItems}"
+			Grid.Column="0" 
+			Grid.Row="0"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Stretch"
+			Margin="38,26,32,32"
+			Width="220"
+			Height="180" 
+			SelectedItemChanged="Tree_SelectedItemChanged"
+			Name="tree">
+			<TreeView.Resources>
+				<Style TargetType="TreeViewItem"> <Setter Property="IsSelected" Value="{Binding Selected, Mode=TwoWay}" />
+				</Style>
+			</TreeView.Resources>
+			<TreeView.ItemTemplate>
+				<HierarchicalDataTemplate 
+					ItemsSource="{Binding TreeItems}">
+					<TextBlock
+						Text="{Binding Name}" />
+					        <HierarchicalDataTemplate.ItemTemplate>
+                                <HierarchicalDataTemplate 
+					        ItemsSource="{Binding TreeItems}">
+                            <StackPanel
+								            Orientation="Horizontal">
+                                <TextBlock
+									            Text="{Binding Name}" />
+                                <CheckBox
+									            IsEnabled="False"
+									            IsChecked="{Binding Selected}" />
+                            </StackPanel>
+                            <HierarchicalDataTemplate.ItemTemplate>
+
+                                <HierarchicalDataTemplate 
+					        ItemsSource="{Binding TreeItems}">
+                                    <StackPanel
+								            Orientation="Horizontal">
+                                        <TextBlock
+									            Text="{Binding Name}" />
+                                        <CheckBox
+									            IsEnabled="False"
+									            IsChecked="{Binding Selected}" />
+                                    </StackPanel>
+                                    <HierarchicalDataTemplate.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel
+								            Orientation="Horizontal">
+                                                <TextBlock
+									            Text="{Binding Name}" />
+                                                <CheckBox
+									            IsEnabled="False"
+									            IsChecked="{Binding Selected}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </HierarchicalDataTemplate.ItemTemplate>
+                                </HierarchicalDataTemplate>
+
+                            </HierarchicalDataTemplate.ItemTemplate>
+                </HierarchicalDataTemplate>
+                </HierarchicalDataTemplate.ItemTemplate>
+				</HierarchicalDataTemplate>
+			</TreeView.ItemTemplate>
+		</TreeView>
+		<TextBlock
+			Text="{Binding StateText}"
+			Grid.Column="0"
+			Grid.Row="0"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Bottom"
+			Margin="40,0,33,13"
+			Width="217"
+			Height="28" />
+		<TextBox Name="opBox"
+			Text="{Binding Operation}"
+			Grid.Column="0"
+			Grid.Row="0"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Top"
+			Margin="39,6,30,0"
+			Width="221"
+			Height="27" />
+		<TextBox Name="hidden"
+			Text="{Binding HiddenStatus}"
+			TextChanged="TextBox_TextChanged"
+			Visibility="Hidden"
+			Grid.Column="0"
+			Grid.Row="0"
+			HorizontalAlignment="Left"
+			VerticalAlignment="Top"
+			Margin="6,22,0,0"
+			Width="24"
+			Height="23" />
+	</Grid>
+</Window>
