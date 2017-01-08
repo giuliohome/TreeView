@@ -6,12 +6,111 @@ using System.Linq;
 
 namespace TreeVisitor
 {
-	/// <summary>
-	/// Description of TreeViewModelcs.
-	/// An example of functional state mgmt 
-	/// </summary>
-	public class TreeViewModel: INotifyPropertyChanged
-	{
+    /// <summary>
+    /// Description of TreeViewModelcs.
+    /// An example of functional state mgmt 
+    /// </summary>
+    /// 
+
+
+    abstract class ICutViewVisitor
+    {
+        internal abstract void visit(PasteState state);
+        internal abstract void visit(NormalState state);
+        internal abstract void visit(CutState state);
+    }
+    class CutViewVisitor : ICutViewVisitor
+    {
+        
+
+        override internal void visit(PasteState state)
+        {
+            state.model.viewState = state.model.normalState;
+            state.model.Operation = "Select a node to cut";
+            state.model.HiddenStatus = "Choices";
+        }
+
+
+        override internal void visit(NormalState state)
+        {
+            if (state.model.selectedItem.Name.Equals("Choices"))
+            {
+                return;
+            }
+            state.model.cutFrom = state.model.selectedItem.Name;
+            state.model.fromParent = state.model.selectedItem.parent;
+            state.model.viewState = state.model.cutState;
+            state.model.Operation = "Select a node to paste to";
+        }
+
+        override internal void visit(CutState state)
+        {
+            if (state.model.selectedItem.Name.Equals(state.model.cutFrom))
+            {
+                return;
+            }
+            state.model.viewState = state.model.pasteState;
+            state.model.pasteTo = state.model.selectedItem.Name;
+            if (state.model.fromParent != null)
+            {
+                var foundFrom = state.model.fromParent.TreeItems.First(t => t.Name.Equals(state.model.cutFrom));
+                if (foundFrom == null)
+                {
+                    state.model.Operation = "Error! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+                }
+                else
+                {
+                    state.model.fromParent.TreeItems.Remove(foundFrom);
+                    state.model.selectedItem.TreeItems.Add(foundFrom);
+                    foundFrom.parent = state.model.selectedItem;
+                    state.model.Operation = "Done! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+                }
+
+            }
+            else
+            {
+                state.model.Operation = "Error! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+            }
+        }
+        
+    }
+
+
+    abstract class ICutViewState
+    {
+        abstract internal void accept(ICutViewVisitor visitor);
+    }
+
+    class NormalState : ICutViewState
+    {
+        internal TreeViewModel model;
+        override internal void accept(ICutViewVisitor visitor)
+        {
+            visitor.visit(this);
+        }
+    }
+
+    class CutState : ICutViewState
+    {
+        internal TreeViewModel model;
+        override internal void accept(ICutViewVisitor visitor)
+        {
+            visitor.visit(this);
+        }
+    }
+    class PasteState : ICutViewState
+    {
+        internal TreeViewModel model;
+        override internal void accept(ICutViewVisitor visitor)
+        {
+            visitor.visit(this);
+        }
+    }
+
+
+
+    public class TreeViewModel: INotifyPropertyChanged
+    {
 		public event PropertyChangedEventHandler PropertyChanged;
 		
 		protected void OnPropertyChanged(string propertyName) {
@@ -19,7 +118,12 @@ namespace TreeVisitor
 				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
 			}
 		}
-		
+
+        internal NormalState normalState = new NormalState();
+        internal CutState cutState = new CutState();
+        internal PasteState pasteState = new PasteState();
+        internal CutViewVisitor cutVisitor = new CutViewVisitor();
+
 		public TreeViewModel()
 		{
             var root = new TreeItem()
@@ -40,7 +144,10 @@ namespace TreeVisitor
             root.TreeItems = xTreeItems;
             treeItems = new ObservableCollection<TreeItem>();
 			treeItems.Add(root);
-			viewState = CutViewState.Normal;
+            normalState.model = this;
+            cutState.model = this;
+            pasteState.model = this;
+			viewState = normalState;
 			operation = "Select a node to cut";
 		}
 		
@@ -70,16 +177,12 @@ namespace TreeVisitor
 				OnPropertyChanged("HiddenStatus");
 			}
 		}
-		
-		private enum CutViewState {
-			Normal = 0,
-			Cut = 1,
-			Paste = 2
-		}
-        TreeItem fromParent;
-		string cutFrom;
-		string pasteTo;
-		private CutViewState viewState;
+
+        
+        internal TreeItem fromParent;
+		internal string cutFrom;
+		internal string pasteTo;
+		internal ICutViewState viewState;
 		
 		internal void notifySel() {
 			
@@ -90,51 +193,8 @@ namespace TreeVisitor
 			}
 			
 			StateText = "Selected: " + selectedItem.Name;
-			switch (viewState) {
-				case TreeViewModel.CutViewState.Normal:
-                    if (selectedItem.Name.Equals("Choices") )
-                    {
-                        return;
-                    }
-                    cutFrom = selectedItem.Name;
-                    fromParent = selectedItem.parent;
-					viewState = CutViewState.Cut;
-					Operation = "Select a node to paste to";
-					break;
-				case TreeViewModel.CutViewState.Cut:
-					if (selectedItem.Name.Equals(cutFrom)) {
-						break;
-					}
-					viewState = CutViewState.Paste;
-					pasteTo = selectedItem.Name;
-                    if (fromParent != null )
-                    {
-                        var foundFrom = fromParent.TreeItems.First(t => t.Name.Equals(cutFrom));
-                        if (foundFrom == null)
-                        {
-                            Operation = "Error! From " + cutFrom + " to " + pasteTo;
-                        } else
-                        {
-                            fromParent.TreeItems.Remove(foundFrom);
-                            selectedItem.TreeItems.Add(foundFrom);
-                            foundFrom.parent = selectedItem;
-                            Operation = "Done! From " + cutFrom + " to " + pasteTo;
-                        }
-                        
-                    } else
-                    {
-                        Operation = "Error! From " + cutFrom + " to " + pasteTo;
-                    }
-                    
-					break;
-				case TreeViewModel.CutViewState.Paste:
-					viewState = CutViewState.Normal;
-					Operation = "Select a node to cut";
-					HiddenStatus = "Choices";
-					break;
-				default:
-					throw new Exception("Invalid value for CutViewState");
-			}
+
+            viewState.accept(cutVisitor);
 		}
 		
 		internal TreeItem selectedItem;
