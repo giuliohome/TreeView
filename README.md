@@ -2,7 +2,7 @@
 State handling in WPF-MVVM
 
 
-I  suggest a functional [approach](http://softwareengineering.stackexchange.com/a/339662) and I hope that a simple example related to the button' s state (enabled or disabled) can be generic enough ...
+I  suggest a functional approach and I hope that a simple example related to the button' s state (enabled or disabled) can be generic enough ...
 
 So that's how I usually manage this: I simply go in the CanRun method of the DelegateCommand, implementing the button's ICommand. It must have a getter of course.
 
