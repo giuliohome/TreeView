@@ -15,9 +15,9 @@ namespace TreeVisitor
 
     abstract class ICutViewVisitor<A>
     {
-        internal abstract ICutViewState visitPaste2Normal(PasteState state);
-        internal abstract ICutViewState visitNormal2Cut(NormalState state);
-        internal abstract ICutViewState visitCut2Paste(CutState state);
+        internal abstract A visitPaste2Normal(PasteState state);
+        internal abstract A visitNormal2Cut(NormalState state);
+        internal abstract A visitCut2Paste(CutState state);
     }
     class CutViewVisitor : ICutViewVisitor<ICutViewState>
     {
@@ -96,7 +96,7 @@ namespace TreeVisitor
                 PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
             }
         }
-        abstract internal ICutViewState accept(ICutViewVisitor<ICutViewState> visitor);
+        abstract internal A accept<A> (ICutViewVisitor<A> visitor);
         internal string operation;
         public string Operation
         {
@@ -114,7 +114,7 @@ namespace TreeVisitor
     class NormalState : ICutViewState
     {
         //internal TreeViewModel model;
-        override internal ICutViewState accept(ICutViewVisitor<ICutViewState> visitor)
+        override internal A accept<A>(ICutViewVisitor<A> visitor)
         {
             return visitor.visitNormal2Cut(this);
         }
@@ -134,7 +134,7 @@ namespace TreeVisitor
     class CutState : ICutViewState
     {
         //internal TreeViewModel model;
-        override internal ICutViewState accept(ICutViewVisitor<ICutViewState> visitor)
+        override internal A accept<A>(ICutViewVisitor<A> visitor)
         {
             return visitor.visitCut2Paste(this);
         }
@@ -145,7 +145,7 @@ namespace TreeVisitor
     {
         internal string pasteTo;
         //internal TreeViewModel model;
-        override internal ICutViewState accept(ICutViewVisitor<ICutViewState> visitor)
+        override internal A accept<A>(ICutViewVisitor<A> visitor)
         {
             return visitor.visitPaste2Normal(this);
         }
