@@ -69,7 +69,7 @@
 			</TreeView.ItemTemplate>
 		</TreeView>
 		<TextBlock
-			Text="{Binding StateText}"
+			Text="{Binding ViewState.StateText}"
 			Grid.Column="0"
 			Grid.Row="0"
 			HorizontalAlignment="Stretch"

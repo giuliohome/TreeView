@@ -15,70 +15,93 @@ namespace TreeVisitor
 
     abstract class ICutViewVisitor<A>
     {
-        internal abstract A visitPaste2Normal(PasteState state);
-        internal abstract A visitNormal2Cut(NormalState state);
-        internal abstract A visitCut2Paste(CutState state);
+        internal abstract A visitPaste2Normal(PasteState pasteState);
+        internal abstract A visitNormal2Cut(NormalState normalState);
+        internal abstract A visitCut2Paste(CutState cutState);
     }
     class CutViewVisitor : ICutViewVisitor<ICutViewState>
     {
         
 
-        override internal ICutViewState visitPaste2Normal(PasteState state)
+        override internal ICutViewState visitPaste2Normal(PasteState pasteState)
         {
             var normalState = new NormalState();
             normalState.Operation = "Select a node to cut";
             normalState.HiddenStatus = "Choices";
-            normalState.selectedItem = state.selectedItem;
+            normalState.selectedItem = pasteState.selectedItem;
+            normalState.StateText = "Selected: " + normalState.selectedItem.Name;
             return normalState;
         }
 
 
-        override internal ICutViewState visitNormal2Cut(NormalState state)
+        override internal ICutViewState visitNormal2Cut(NormalState normalState)
         {
-            if (state.selectedItem.Name.Equals("Choices"))
+            if (normalState.selectedItem.Name.Equals("Choices"))
             {
-                return state;
+                normalState.StateText = "Selected: " + normalState.selectedItem.Name;
+                return normalState;
             }
             var cutState = new CutState();
-            cutState.cutFrom = state.selectedItem.Name;
-            cutState.fromParent = state.selectedItem.parent;
-            cutState.selectedItem = state.selectedItem;
-            cutState.operation = state.operation;
-            
-            state.Operation = "Select a node to paste to";
+            cutState.cutFrom = normalState.selectedItem.Name;
+            cutState.fromParent = normalState.selectedItem.parent;
+            cutState.selectedItem = normalState.selectedItem;
+            cutState.operation = normalState.operation;
+
+            cutState.Operation = "Select a node to paste to";
+            cutState.StateText = "Selected: " + cutState.selectedItem.Name;
             return cutState;
         }
 
-        override internal ICutViewState visitCut2Paste(CutState state)
+        override internal ICutViewState visitCut2Paste(CutState cutState)
         {
-            if (state.selectedItem.Name.Equals(state.cutFrom))
+            if (cutState.selectedItem.Name.Equals(cutState.cutFrom))
             {
-                return state;
+                cutState.StateText = "Selected: " + cutState.selectedItem.Name;
+                return cutState;
             }
             var pasteState = new PasteState();
-            pasteState.selectedItem = state.selectedItem;
-            pasteState.operation = state.operation;
-            pasteState.pasteTo = state.selectedItem.Name;
-            if (state.fromParent != null)
+            pasteState.selectedItem = cutState.selectedItem;
+            pasteState.operation = cutState.operation;
+            pasteState.pasteTo = cutState.selectedItem.Name;
+            if (cutState.fromParent != null)
             {
-                var foundFrom = state.fromParent.TreeItems.First(t => t.Name.Equals(state.cutFrom));
+                var foundFrom = cutState.fromParent.TreeItems.First(t => t.Name.Equals(cutState.cutFrom));
                 if (foundFrom == null)
                 {
-                    pasteState.Operation = "Error! From " + state.cutFrom + " to " + pasteState.pasteTo;
+                    cutState.StateText = "Error! From " + cutState.cutFrom + " to " + pasteState.pasteTo;
+                    return cutState;
                 }
                 else
                 {
-                    state.fromParent.TreeItems.Remove(foundFrom);
+                    var checkParent = pasteState.selectedItem.parent;
+                    bool checkCyclic = false;
+                    while (checkParent != null)
+                    {
+                        if (foundFrom.Name.Equals(checkParent.Name))
+                        {
+                            checkCyclic = true;
+                            break;
+                        }
+                        checkParent = checkParent.parent;
+                    }
+                    if (checkCyclic)
+                    {
+                        cutState.StateText = "Cyclic Reference! From " + cutState.cutFrom + " to " + pasteState.pasteTo;
+                        return cutState;
+                    }
+                    cutState.fromParent.TreeItems.Remove(foundFrom);
                     pasteState.selectedItem.TreeItems.Add(foundFrom);
-                    foundFrom.parent = state.selectedItem;
-                    pasteState.Operation = "Done! From " + state.cutFrom + " to " + pasteState.pasteTo;
+                    foundFrom.parent = cutState.selectedItem;
+                    pasteState.Operation = "Done! From " + cutState.cutFrom + " to " + pasteState.pasteTo;
                 }
 
             }
             else
             {
-                state.Operation = "Error! From " + state.cutFrom + " to " + pasteState.pasteTo;
+                cutState.StateText = "Error! From " + cutState.cutFrom + " to " + pasteState.pasteTo;
+                return cutState;
             }
+            pasteState.StateText = "Selected: " + pasteState.selectedItem.Name;
             return pasteState;
         }
         
@@ -105,6 +128,17 @@ namespace TreeVisitor
             {
                 operation = value;
                 OnPropertyChanged("operation");
+            }
+        }
+
+        private string stateText;
+        public string StateText
+        {
+            get { return stateText; }
+            set
+            {
+                stateText = value;
+                OnPropertyChanged("StateText");
             }
         }
 
@@ -189,15 +223,6 @@ namespace TreeVisitor
 			viewState.operation = "Select a node to cut";
 		}
 		
-		private string stateText;
-		public string StateText {
-			get { return stateText; }
-			set { 
-				stateText = value; 
-				OnPropertyChanged("StateText");
-			}
-		}
-				
 		internal ICutViewState viewState = new NormalState();
         public ICutViewState ViewState
         {
@@ -217,8 +242,6 @@ namespace TreeVisitor
 				return;
 			}
 			
-			StateText = "Selected: " + viewState.selectedItem.Name;
-
             ViewState = viewState.accept(cutVisitor);
 		}
 		
