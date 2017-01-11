@@ -15,95 +15,139 @@ namespace TreeVisitor
 
     abstract class ICutViewVisitor
     {
-        internal abstract void visit(PasteState state);
-        internal abstract void visit(NormalState state);
-        internal abstract void visit(CutState state);
+        internal abstract ICutViewState visitPaste2Normal(PasteState state);
+        internal abstract ICutViewState visitNormal2Cut(NormalState state);
+        internal abstract ICutViewState visitCut2Paste(CutState state);
     }
     class CutViewVisitor : ICutViewVisitor
     {
         
 
-        override internal void visit(PasteState state)
+        override internal ICutViewState visitPaste2Normal(PasteState state)
         {
-            state.model.viewState = state.model.normalState;
-            state.model.Operation = "Select a node to cut";
-            state.model.HiddenStatus = "Choices";
+            var normalState = new NormalState();
+            normalState.Operation = "Select a node to cut";
+            normalState.HiddenStatus = "Choices";
+            normalState.selectedItem = state.selectedItem;
+            return normalState;
         }
 
 
-        override internal void visit(NormalState state)
+        override internal ICutViewState visitNormal2Cut(NormalState state)
         {
-            if (state.model.selectedItem.Name.Equals("Choices"))
+            if (state.selectedItem.Name.Equals("Choices"))
             {
-                return;
+                return state;
             }
-            state.model.cutFrom = state.model.selectedItem.Name;
-            state.model.fromParent = state.model.selectedItem.parent;
-            state.model.viewState = state.model.cutState;
-            state.model.Operation = "Select a node to paste to";
+            var cutState = new CutState();
+            cutState.cutFrom = state.selectedItem.Name;
+            cutState.fromParent = state.selectedItem.parent;
+            cutState.selectedItem = state.selectedItem;
+            cutState.operation = state.operation;
+            
+            state.Operation = "Select a node to paste to";
+            return cutState;
         }
 
-        override internal void visit(CutState state)
+        override internal ICutViewState visitCut2Paste(CutState state)
         {
-            if (state.model.selectedItem.Name.Equals(state.model.cutFrom))
+            if (state.selectedItem.Name.Equals(state.cutFrom))
             {
-                return;
+                return state;
             }
-            state.model.viewState = state.model.pasteState;
-            state.model.pasteTo = state.model.selectedItem.Name;
-            if (state.model.fromParent != null)
+            var pasteState = new PasteState();
+            pasteState.selectedItem = state.selectedItem;
+            pasteState.operation = state.operation;
+            pasteState.pasteTo = state.selectedItem.Name;
+            if (state.fromParent != null)
             {
-                var foundFrom = state.model.fromParent.TreeItems.First(t => t.Name.Equals(state.model.cutFrom));
+                var foundFrom = state.fromParent.TreeItems.First(t => t.Name.Equals(state.cutFrom));
                 if (foundFrom == null)
                 {
-                    state.model.Operation = "Error! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+                    pasteState.Operation = "Error! From " + state.cutFrom + " to " + pasteState.pasteTo;
                 }
                 else
                 {
-                    state.model.fromParent.TreeItems.Remove(foundFrom);
-                    state.model.selectedItem.TreeItems.Add(foundFrom);
-                    foundFrom.parent = state.model.selectedItem;
-                    state.model.Operation = "Done! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+                    state.fromParent.TreeItems.Remove(foundFrom);
+                    pasteState.selectedItem.TreeItems.Add(foundFrom);
+                    foundFrom.parent = state.selectedItem;
+                    pasteState.Operation = "Done! From " + state.cutFrom + " to " + pasteState.pasteTo;
                 }
 
             }
             else
             {
-                state.model.Operation = "Error! From " + state.model.cutFrom + " to " + state.model.pasteTo;
+                state.Operation = "Error! From " + state.cutFrom + " to " + pasteState.pasteTo;
             }
+            return pasteState;
         }
         
     }
 
 
-    abstract class ICutViewState
+    public abstract class ICutViewState : INotifyPropertyChanged
     {
-        abstract internal void accept(ICutViewVisitor visitor);
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+        abstract internal ICutViewState accept(ICutViewVisitor visitor);
+        internal string operation;
+        public string Operation
+        {
+            get { return operation; }
+            set
+            {
+                operation = value;
+                OnPropertyChanged("operation");
+            }
+        }
+
+        internal TreeItem selectedItem;
     }
 
     class NormalState : ICutViewState
     {
-        internal TreeViewModel model;
-        override internal void accept(ICutViewVisitor visitor)
+        //internal TreeViewModel model;
+        override internal ICutViewState accept(ICutViewVisitor visitor)
         {
-            visitor.visit(this);
+            return visitor.visitNormal2Cut(this);
+        }
+
+        private string hiddenStatus;
+        public string HiddenStatus
+        {
+            get { return hiddenStatus; }
+            set
+            {
+                hiddenStatus = value;
+                OnPropertyChanged("HiddenStatus");
+            }
         }
     }
 
     class CutState : ICutViewState
     {
-        internal TreeViewModel model;
-        override internal void accept(ICutViewVisitor visitor)
+        //internal TreeViewModel model;
+        override internal ICutViewState accept(ICutViewVisitor visitor)
         {
-            visitor.visit(this);
+            return visitor.visitCut2Paste(this);
         }
+        internal string cutFrom;
+        internal TreeItem fromParent;
     }
     class PasteState : ICutViewState
     {
-        internal TreeViewModel model;
-        override internal void accept(ICutViewVisitor visitor)
+        internal string pasteTo;
+        //internal TreeViewModel model;
+        override internal ICutViewState accept(ICutViewVisitor visitor)
         {
-            visitor.visit(this);
+            return visitor.visitPaste2Normal(this);
         }
     }
 
@@ -119,9 +163,6 @@ namespace TreeVisitor
 			}
 		}
 
-        internal NormalState normalState = new NormalState();
-        internal CutState cutState = new CutState();
-        internal PasteState pasteState = new PasteState();
         internal CutViewVisitor cutVisitor = new CutViewVisitor();
 
 		public TreeViewModel()
@@ -144,11 +185,8 @@ namespace TreeVisitor
             root.TreeItems = xTreeItems;
             treeItems = new ObservableCollection<TreeItem>();
 			treeItems.Add(root);
-            normalState.model = this;
-            cutState.model = this;
-            pasteState.model = this;
-			viewState = normalState;
-			operation = "Select a node to cut";
+
+			viewState.operation = "Select a node to cut";
 		}
 		
 		private string stateText;
@@ -159,53 +197,40 @@ namespace TreeVisitor
 				OnPropertyChanged("StateText");
 			}
 		}
-		
-		private string operation;
-		public string Operation {
-			get { return operation; }
-			set { 
-				operation = value; 
-				OnPropertyChanged("operation");
-			}
-		}
-		
-		private string hiddenStatus;
-		public string HiddenStatus {
-			get { return hiddenStatus; }
-			set { 
-				hiddenStatus = value; 
-				OnPropertyChanged("HiddenStatus");
-			}
-		}
+				
+		internal ICutViewState viewState = new NormalState();
+        public ICutViewState ViewState
+        {
+            get { return viewState; }
+            set
+            {
+                viewState = value;
+                OnPropertyChanged("ViewState");
+            }
+        }
 
-        
-        internal TreeItem fromParent;
-		internal string cutFrom;
-		internal string pasteTo;
-		internal ICutViewState viewState;
-		
-		internal void notifySel() {
+        internal void notifySel() {
 			
 			OnPropertyChanged("SelectedItem");
 			
-			if (!selectedItem.Selected) {
+			if (!viewState.selectedItem.Selected) {
 				return;
 			}
 			
-			StateText = "Selected: " + selectedItem.Name;
+			StateText = "Selected: " + viewState.selectedItem.Name;
 
-            viewState.accept(cutVisitor);
+            ViewState = viewState.accept(cutVisitor);
 		}
 		
-		internal TreeItem selectedItem;
+		
 		public TreeItem SelectedItem {
-			get { return selectedItem; }
+			get { return viewState.selectedItem; }
 			set {
 				treeItems[0].Selected = false;
 				foreach (TreeItem item in treeItems[0].TreeItems.Where(i => i.Selected)) {
 					item.Selected = false;	
 				}
-				selectedItem = value;
+                viewState.selectedItem = value;
 				OnPropertyChanged("SelectedItem");
 			}
 		}
@@ -258,7 +283,7 @@ namespace TreeVisitor
 				selected = value;
 				OnPropertyChanged("Selected");
 				if (model != null) {
-					model.selectedItem = this;
+					model.viewState.selectedItem = this;
 					model.notifySel();
 				}
 			}

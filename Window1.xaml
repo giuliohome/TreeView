@@ -78,7 +78,7 @@
 			Width="217"
 			Height="28" />
 		<TextBox Name="opBox"
-			Text="{Binding Operation}"
+			Text="{Binding ViewState.Operation}"
 			Grid.Column="0"
 			Grid.Row="0"
 			HorizontalAlignment="Stretch"
@@ -87,7 +87,7 @@
 			Width="221"
 			Height="27" />
 		<TextBox Name="hidden"
-			Text="{Binding HiddenStatus}"
+			Text="{Binding ViewState.HiddenStatus}"
 			TextChanged="TextBox_TextChanged"
 			Visibility="Hidden"
 			Grid.Column="0"
